@@ -1,0 +1,160 @@
+#Figure. 2A
+#calculating DEG in each organ
+f<-read.csv("organ_rpkm.csv",header = T,row.names = 1)
+
+#selecting significantly changed genes in Dunnet’s ’s multiple comparison test (thymus)
+library(multcomp)
+samplename<-c("c_thy","c_thy","c_thy","spl","spl","spl","lung","lung","lung")
+colnames(f)<-samplename
+g<-f[1,]
+for (i in 1:41743) {
+  if(max(f[i,])>1){
+    x=data.frame(cell=factor(samplename),rpkm=t(f[i,]))
+    colnames(x)=c("cell","rpkm")
+    y=aov(rpkm~cell,data = x)
+    z=glht(y,linfct=mcp(cell="Dunnett"))
+    w=summary(z)$test$pvalues
+    if(max(w)<0.05){g=rbind(g,f[i,])}
+  }
+}
+g[1,]<-NA
+g<-na.omit(g)
+
+#selecting FC>2 genes (thymus)
+m<-read.csv("means.csv",header = T,row.names = 1)
+m<-m[,1:3]
+colnames(m)<-c("WTthy","WTspl","WTlung")
+thy_deg<-m[rownames(g),]
+h<-thy_deg[1,]
+for (i in 1:665) {
+  if(thy_deg[i,1]>2*mean(thy_deg[i,2],thy_deg[i,3])){
+    h<-rbind(h,thy_deg[i,])
+  }
+}
+h[1,]<-NA
+h<-na.omit(h)
+h<-h[order(h$WTthy),]
+deg<-h
+
+#selecting significantly changed genes in Dunnet’s ’s multiple comparison test (spleen)
+samplename<-c("thy","thy","thy","c_spl","c_spl","c_spl","lung","lung","lung")
+colnames(f)<-samplename
+g<-f[1,]
+for (i in 1:41743) {
+  if(max(f[i,])>1){
+    x=data.frame(cell=factor(samplename),rpkm=t(f[i,]))
+    colnames(x)=c("cell","rpkm")
+    y=aov(rpkm~cell,data = x)
+    z=glht(y,linfct=mcp(cell="Dunnett"))
+    w=summary(z)$test$pvalues
+    if(max(w)<0.05){g=rbind(g,f[i,])}
+  }
+}
+g[1,]<-NA
+g<-na.omit(g)
+
+#selecting FC>2 genes (spleen)
+spl_deg<-m[rownames(g),]
+h<-spl_deg[1,]
+for (i in 1:93) {
+  if(spl_deg[i,2]>2*mean(spl_deg[i,1],spl_deg[i,3])){
+    h<-rbind(h,spl_deg[i,])
+  }
+}
+h[1,]<-NA
+h<-na.omit(h)
+h<-h[order(h$WTspl),]
+deg<-rbind(h,deg)
+
+#selecting significantly changed genes in Dunnet’s ’s multiple comparison test (lung)
+samplename<-c("thy","thy","thy","spl","spl","spl","lung","lung","lung")
+colnames(f)<-samplename
+g<-f[1,]
+for (i in 1:41743) {
+  if(max(f[i,])>1){
+    x=data.frame(cell=factor(samplename),rpkm=t(f[i,]))
+    colnames(x)=c("cell","rpkm")
+    y=aov(rpkm~cell,data = x)
+    z=glht(y,linfct=mcp(cell="Dunnett"))
+    w=summary(z)$test$pvalues
+    if(max(w)<0.05){g=rbind(g,f[i,])}
+  }
+}
+g[1,]<-NA
+g<-na.omit(g)
+
+#selecting FC>2 genes (lung)
+lung_deg<-m[rownames(g),]
+h<-lung_deg[1,]
+for (i in 1:232) {
+  if(lung_deg[i,3]>2*mean(lung_deg[i,1],lung_deg[i,2])){
+    h<-rbind(h,lung_deg[i,])
+  }
+}
+h[1,]<-NA
+h<-na.omit(h)
+h<-h[order(h$WTlung),]
+write.csv(h,file = "/Users/ayami/Desktop/eosinophil/RNAseq/lung_upregulated.csv")
+deg<-rbind(h,deg)
+
+#selecting FC<0.5 genes (thymus)
+h<-thy_deg[1,]
+for (i in 1:665) {
+  if(thy_deg[i,1]<0.5*mean(thy_deg[i,2],thy_deg[i,3])){
+    h<-rbind(h,thy_deg[i,])
+  }
+}
+h[1,]<-NA
+h<-na.omit(h)
+h<-h[order(h$WTthy),]
+deg<-rbind(h,deg)
+
+#selecting FC<0.5 genes (spleen)
+h<-spl_deg[1,]
+for (i in 1:93) {
+  if(spl_deg[i,2]<0.5*mean(spl_deg[i,1],spl_deg[i,3])){
+    h<-rbind(h,spl_deg[i,])
+  }
+}
+h[1,]<-NA
+h<-na.omit(h)
+h<-h[order(h$WTspl),]
+deg<-rbind(h,deg)
+
+#selecting FC<0.5 genes (lung)
+h<-lung_deg[1,]
+for (i in 1:232) {
+  if(lung_deg[i,3]<0.5*mean(lung_deg[i,1],lung_deg[i,2])){
+    h<-rbind(h,lung_deg[i,])
+  }
+}
+h[1,]<-NA
+h<-na.omit(h)
+h<-h[order(h$WTlung),]
+deg<-rbind(h,deg)
+
+#calculating Z-score
+deg<-as.matrix(deg)
+for (i in 1:650) {
+  deg[i,]<-as.numeric(deg[i,])
+  deg[i,]<-(deg[i,]-mean(deg[i,]))/sd(deg[i,])
+}
+colnames(deg)<-c("Thymus","Spleen","Lung")
+
+#drawing heatmap
+library(reshape2)
+library(ggplot2)
+library(ggthemes)
+library(scales)
+df<-melt(deg)
+colnames(df)<-c("gene","celltype","Zscore")
+ggplot(df,aes(as.factor(celltype),as.factor(gene)))+
+  geom_tile(aes(fill=Zscore))+scale_fill_gradientn(colours = rev(brewer.pal(9,"Spectral")))+
+  theme(plot.background=element_blank(), panel.grid.minor=element_blank(),
+        panel.background=element_blank(), axis.line=element_blank(), 
+        axis.title.x=element_blank(), axis.title.y=element_blank(), strip.background=element_rect(fill="white",colour="white"),
+        axis.ticks = element_blank(), axis.text.y = element_blank(),
+        text = element_text(size = 24), legend.key.size = unit(5,"mm"),
+        legend.title = element_text(size = 14), axis.text.x = element_text(angle = 90,hjust = 1),
+        legend.text = element_text(size = 10))+
+  scale_x_discrete(position = "top")
